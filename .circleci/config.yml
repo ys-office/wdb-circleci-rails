@@ -50,6 +50,7 @@ jobs:
             - vendor/bundle
 
   test_rspec:
+    parallelism: 2
     <<: *with_db_executor
     steps:
       - restore_cache:
@@ -68,7 +69,8 @@ jobs:
             bundle exec rspec --profile 10 \
                               --format RspecJunitFormatter \
                               --out test_results/rspec.xml \
-                              --format progress
+                              --format progress \
+                              $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
       - store_test_results:
           path: test_results
 
