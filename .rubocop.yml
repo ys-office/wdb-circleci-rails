@@ -1,0 +1,14 @@
+inherit_from: .rubocop_todo.yml
+
+require: rubocop-rspec
+
+AllCops:
+  TargetRailsVersion: 5.2
+  Exclude:
+    - 'db/**/*'
+    - 'config/**/*'
+    - 'script/**/*'
+    - 'bin/**/*'
+
+Rails:
+  Enabled: true
