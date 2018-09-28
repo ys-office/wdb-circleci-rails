@@ -39,12 +39,12 @@ jobs:
       - restore_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Bundle Install
           command: bundle check || bundle install
       - save_cache:
-          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
           paths:
             - vendor/bundle
 
@@ -55,7 +55,7 @@ jobs:
       - restore_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Wait for DB
           command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
@@ -79,7 +79,7 @@ jobs:
       - restore_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Run rails_best_practices
           command: bundle exec rails_best_practices
@@ -90,7 +90,7 @@ jobs:
       - restore_cache:
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Run rubocop
           command: |
