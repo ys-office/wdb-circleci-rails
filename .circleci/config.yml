@@ -13,6 +13,7 @@ with_db_executor: &with_db_executor
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
       - image: circleci/mysql:8.0
+        command: mysqld --default-authentication-plugin=mysql_native_password
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_ROOT_PASSWORD: ''
