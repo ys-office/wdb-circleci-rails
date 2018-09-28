@@ -14,9 +14,9 @@ with_db_executor: &with_db_executor
           RAILS_ENV: test
       - image: circleci/mysql:8.0
         environment:
-          MYSQL_DATABASE: wdb-circleci-rails_test
-          MYSQL_USER: root
           MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_DATABASE: wdb-circleci-rails_test
     working_directory: ~/repo
 
 
