@@ -90,7 +90,12 @@ jobs:
           key: bundle-v1-{{ checksum "Gemfile.lock" }}
       - run:
           name: Run rubocop
-          command: bundle exec rubocop
+          command: |
+            bundle exec rubocop \
+            -r $(bundle show rubocop-junit-formatter)/lib/rubocop/formatter/junit_formatter.rb \
+            --format RuboCop::Formatter::JUnitFormatter --out test_results/rubocop.xml
+      - store_test_results:
+          path: test_results
 
 workflows:
   version: 2
