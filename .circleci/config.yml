@@ -2,6 +2,8 @@ default_executor: &default_executor
     docker:
       - image: circleci/ruby:2.5.1
         environment:
+          BUNDLE_JOBS: 3
+          BUNDLE_RETRY: 3
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
     working_directory: ~/repo
