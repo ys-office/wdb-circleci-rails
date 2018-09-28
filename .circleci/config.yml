@@ -1,0 +1,110 @@
+default_executor: &default_executor
+    docker:
+      - image: circleci/ruby:2.5.1
+        environment:
+          BUNDLE_PATH: vendor/bundle
+          RAILS_ENV: test
+    working_directory: ~/repo
+
+with_db_executor: &with_db_executor
+    docker:
+      - image: circleci/ruby:2.5.1
+        environment:
+          BUNDLE_PATH: vendor/bundle
+          RAILS_ENV: test
+      - image: circleci/circleci/mysql:8.0
+        environment:
+          MYSQL_DATABASE: wdb-circleci-rails_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: ~/repo
+
+
+version: 2
+jobs:
+  checkout_code:
+    <<: *default_executor
+    steps:
+      - checkout
+      - save_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/repo
+
+  bundle_dependencies:
+    <<: *default_executor
+    steps:
+      - restore_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: Bundle Install
+          command: bundle check || bundle install
+      - save_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+          paths:
+            - vendor/bundle
+
+  test_rspec:
+    <<: *with_db_executor
+    steps:
+      - restore_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run:
+          name: Database setup
+          command: bin/rails db:schema:load --trace
+      - run:
+          name: Run rspec
+          command: |
+            bundle exec rspec --profile 10 \
+                              --format RspecJunitFormatter \
+                              --out test_results/rspec.xml \
+                              --format progress
+      - store_test_results:
+          path: test_results
+
+  test_rails_best_practices:
+    <<: *default_executor
+    steps:
+      - restore_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: Run rails_best_practices
+          command: bundle exec rails_best_practices
+
+  test_rubocop:
+    <<: *default_executor
+    steps:
+      - restore_cache:
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: bundle-v1-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: Run rubocop
+          command: bundle exec rubocop
+
+workflows:
+  version: 2
+  build_test_deploy:
+    jobs:
+      - checkout_code
+      - bundle_dependencies:
+          requires:
+            - checkout_code
+      - test_rspec:
+          requires:
+            - bundle_dependencies
+      - test_rails_best_practices:
+          requires:
+            - bundle_dependencies
+      - test_rubocop:
+          requires:
+            - bundle_dependencies
