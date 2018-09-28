@@ -38,6 +38,7 @@ group :development, :test do
   gem 'rspec-rails', '~> 3.8'
   gem 'rspec_junit_formatter'
   gem 'rubocop'
+  gem 'rubocop-junit-formatter'
   gem 'rubocop-rspec'
 end
 
