@@ -49,6 +49,33 @@ jobs:
           paths:
             - vendor/bundle
 
+  test_rubocop:
+    executor: default
+    steps:
+      - restore_cache: # ソースコードを復元
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache: # vender/bundleを復元
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: RuboCopを実行
+          command: |
+            bundle exec rubocop \
+            -r $(bundle show rubocop-junit-formatter)/lib/rubocop/formatter/junit_formatter.rb \
+            --format RuboCop::Formatter::JUnitFormatter --out test_results/rubocop.xml
+      - store_test_results: # テストレポートを保存
+          path: test_results
+
+  test_rails_best_practices:
+    executor: default
+    steps:
+      - restore_cache: # ソースコードを復元
+          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache: # vender/bundleを復元
+          key: v1-bundle-{{ checksum "Gemfile.lock" }}
+      - run:
+          name: rails_best_practicesを実行
+          command: bundle exec rails_best_practices
+
   test_rspec:
     parallelism: 2
     executor: with_db
@@ -74,33 +101,6 @@ jobs:
       - store_test_results: # テストレポートを保存
           path: test_results
 
-  test_rails_best_practices:
-    executor: default
-    steps:
-      - restore_cache: # ソースコードを復元
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - run:
-          name: rails_best_practicesを実行
-          command: bundle exec rails_best_practices
-
-  test_rubocop:
-    executor: default
-    steps:
-      - restore_cache: # ソースコードを復元
-          key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
-          key: v1-bundle-{{ checksum "Gemfile.lock" }}
-      - run:
-          name: RuboCopを実行
-          command: |
-            bundle exec rubocop \
-            -r $(bundle show rubocop-junit-formatter)/lib/rubocop/formatter/junit_formatter.rb \
-            --format RuboCop::Formatter::JUnitFormatter --out test_results/rubocop.xml
-      - store_test_results: # テストレポートを保存
-          path: test_results
-
 workflows:
   version: 2
   build_test_deploy:
@@ -109,12 +109,12 @@ workflows:
       - bundle_dependencies: # checkout_codeの後に実行
           requires:
             - checkout_code
-      - test_rspec: # bundle_dependenciesの後に実行
+      - test_rubocop: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
       - test_rails_best_practices: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
-      - test_rubocop: # bundle_dependenciesの後に実行
+      - test_rspec: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
