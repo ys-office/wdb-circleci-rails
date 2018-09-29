@@ -91,7 +91,7 @@ jobs:
           name: データベースのセットアップ
           command: bin/rails db:schema:load --trace
       - run:
-          name: Rspecを実行
+          name: RSpecを実行
           command: |
             bundle exec rspec --profile 10 \
                               --format RspecJunitFormatter \
