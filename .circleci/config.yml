@@ -1,5 +1,5 @@
 executors:
-  default:
+  default: # デフォルトのDockerイメージ
     docker:
       - image: circleci/ruby:2.5.1
         environment:
@@ -8,13 +8,14 @@ executors:
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
     working_directory: ~/repo
-  with_db:
+  with_db: # MySQLのDockerイメージも同時に起動する
     docker:
       - image: circleci/ruby:2.5.1
         environment:
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
       - image: circleci/mysql:8.0
+        # MySQL 8.0.4以降の認証プラグインを変更する
         command: mysqld --default-authentication-plugin=mysql_native_password
         environment:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -24,11 +25,11 @@ executors:
 
 version: 2.1
 jobs:
-  checkout_code:
+  checkout_code: # ソースコードを取得
     executor: default
     steps:
       - checkout
-      - save_cache:
+      - save_cache: # ソースコードをキャッシュ。キーはリポジトリの最終コミットのハッシュ
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/repo
@@ -36,14 +37,14 @@ jobs:
   bundle_dependencies:
     executor: default
     steps:
-      - restore_cache:
+      - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
+      - restore_cache: # vender/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Bundle Install
           command: bundle check || bundle install
-      - save_cache:
+      - save_cache: # vendor/bundleをキャッシュ
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
           paths:
             - vendor/bundle
@@ -52,52 +53,52 @@ jobs:
     parallelism: 2
     executor: with_db
     steps:
-      - restore_cache:
+      - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
+      - restore_cache: # vender/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
-          name: Wait for DB
+          name: データベースの起動を待機
           command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
       - run:
-          name: Database Setup
+          name: データベースのセットアップ
           command: bin/rails db:schema:load --trace
       - run:
-          name: Run Rspec
+          name: Rspecを実行
           command: |
             bundle exec rspec --profile 10 \
                               --format RspecJunitFormatter \
                               --out test_results/rspec.xml \
                               --format progress \
                               $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
-      - store_test_results:
+      - store_test_results: # テストレポートを保存
           path: test_results
 
   test_rails_best_practices:
     executor: default
     steps:
-      - restore_cache:
+      - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
+      - restore_cache: # vender/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
-          name: Run rails_best_practices
+          name: rails_best_practicesを実行
           command: bundle exec rails_best_practices
 
   test_rubocop:
     executor: default
     steps:
-      - restore_cache:
+      - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
+      - restore_cache: # vender/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
-          name: Run Rubocop
+          name: RuboCopを実行
           command: |
             bundle exec rubocop \
             -r $(bundle show rubocop-junit-formatter)/lib/rubocop/formatter/junit_formatter.rb \
             --format RuboCop::Formatter::JUnitFormatter --out test_results/rubocop.xml
-      - store_test_results:
+      - store_test_results: # テストレポートを保存
           path: test_results
 
 workflows:
@@ -105,15 +106,15 @@ workflows:
   build_test_deploy:
     jobs:
       - checkout_code
-      - bundle_dependencies:
+      - bundle_dependencies: # checkout_codeの後に実行
           requires:
             - checkout_code
-      - test_rspec:
+      - test_rspec: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
-      - test_rails_best_practices:
+      - test_rails_best_practices: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
-      - test_rubocop:
+      - test_rubocop: # bundle_dependenciesの後に実行
           requires:
             - bundle_dependencies
