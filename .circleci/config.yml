@@ -14,6 +14,7 @@ executors:
         environment:
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
+      # ステップ内のコマンドは最初のイメージで実行される
       - image: circleci/mysql:8.0
         # MySQL 8.0.4以降の認証プラグインを変更する
         command: mysqld --default-authentication-plugin=mysql_native_password
@@ -29,7 +30,7 @@ jobs:
     executor: default
     steps:
       - checkout
-      - save_cache: # ソースコードをキャッシュ。キーはリポジトリの最終コミットのハッシュ
+      - save_cache: # ソースコードをキャッシュ
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/repo
@@ -39,7 +40,7 @@ jobs:
     steps:
       - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
+      - restore_cache: # vendor/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: Bundle Install
@@ -54,23 +55,18 @@ jobs:
     steps:
       - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
+      - restore_cache: # vendor/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: RuboCopを実行
-          command: |
-            bundle exec rubocop \
-            -r $(bundle show rubocop-junit-formatter)/lib/rubocop/formatter/junit_formatter.rb \
-            --format RuboCop::Formatter::JUnitFormatter --out test_results/rubocop.xml
-      - store_test_results: # テストレポートを保存
-          path: test_results
+          command: bundle exec rubocop
 
   test_rails_best_practices:
     executor: default
     steps:
       - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
+      - restore_cache: # vendor/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: rails_best_practicesを実行
@@ -82,11 +78,13 @@ jobs:
     steps:
       - restore_cache: # ソースコードを復元
           key: v1-repo-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache: # vender/bundleを復元
+      - restore_cache: # vendor/bundleを復元
           key: v1-bundle-{{ checksum "Gemfile.lock" }}
       - run:
           name: データベースの起動を待機
-          command: dockerize -wait tcp://127.0.0.1:3306 -timeout 120s
+          command: |
+            dockerize -wait \
+            tcp://127.0.0.1:3306 -timeout 120s
       - run:
           name: データベースのセットアップ
           command: bin/rails db:schema:load --trace
@@ -94,27 +92,28 @@ jobs:
           name: RSpecを実行
           command: |
             bundle exec rspec --profile 10 \
-                              --format RspecJunitFormatter \
-                              --out test_results/rspec.xml \
-                              --format progress \
-                              $(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings)
+            --format RspecJunitFormatter \
+            --out test_results/rspec.xml \
+            --format progress \
+            $(circleci tests glob "spec/**/*_spec.rb" | \
+            circleci tests split --split-by=timings)
       - store_test_results: # テストレポートを保存
           path: test_results
 
 workflows:
   version: 2
-  build_test_deploy:
+  build_test:
     jobs:
       - checkout_code
-      - bundle_dependencies: # checkout_codeの後に実行
-          requires:
+      - bundle_dependencies:
+          requires: # checkout_codeのあとに実行
             - checkout_code
-      - test_rubocop: # bundle_dependenciesの後に実行
-          requires:
+      - test_rubocop:
+          requires: # bundle_dependenciesのあとに実行
             - bundle_dependencies
-      - test_rails_best_practices: # bundle_dependenciesの後に実行
-          requires:
+      - test_rails_best_practices:
+          requires: # bundle_dependenciesのあとに実行
             - bundle_dependencies
-      - test_rspec: # bundle_dependenciesの後に実行
-          requires:
+      - test_rspec:
+          requires: # bundle_dependenciesのあとに実行
             - bundle_dependencies
