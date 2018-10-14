@@ -121,6 +121,17 @@ jobs:
             docker login -u $DOCKER_USER --password-stdin
             docker push $DOCKER_USER/$CIRCLE_PROJECT_REPONAME
 
+  deploy_notify:
+    executor: default
+    steps:
+      - run:
+          name: デプロイ完了通知
+          command: |
+            curl -X POST -H 'Content-type: application/json' \
+            --data "{'text': \
+            '${CIRCLE_PROJECT_REPONAME}のデプロイ完了'}" \
+            ${SLACK_WEBHOOK_URL}
+
 workflows:
   version: 2
   build_test_deploy:
@@ -143,3 +154,6 @@ workflows:
             - test_rubocop
             - test_rails_best_practices
             - test_rspec
+      - deploy_notify:
+          requires: # deploy_docker_hubのあとに実行
+            - deploy_docker_hub
