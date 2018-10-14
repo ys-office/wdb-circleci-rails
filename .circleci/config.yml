@@ -23,6 +23,9 @@ executors:
           MYSQL_ROOT_PASSWORD: ''
           MYSQL_DATABASE: wdb-circleci-rails_test
     working_directory: ~/repo
+  docker_build: # Dockerビルド用のイメージ
+    docker:
+      - image: docker:18.05.0-ce
 
 version: 2.1
 jobs:
@@ -100,9 +103,30 @@ jobs:
       - store_test_results: # テストレポートを保存
           path: test_results
 
+  deploy_ecr:
+    executor: docker_build
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: デプロイ用コマンドのインストール
+          command: |
+            apk add --no-cache --update py-pip
+            pip install awscli
+      - run:
+          name: Dockerビルド
+          command: docker build -t $CIRCLE_PROJECT_REPONAME .
+      - deploy:
+          name: ECRへデプロイ
+          command: |
+            $(aws ecr get-login --no-include-email --region us-east-1)
+            docker tag $CIRCLE_PROJECT_REPONAME:latest 168724245369.dkr.ecr.us-east-1.amazonaws.com/$CIRCLE_PROJECT_REPONAME:latest
+            docker push 168724245369.dkr.ecr.us-east-1.amazonaws.com/$CIRCLE_PROJECT_REPONAME:latest
+
 workflows:
   version: 2
-  build_test:
+  build_test_deploy:
     jobs:
       - checkout_code
       - bundle_dependencies:
@@ -117,3 +141,8 @@ workflows:
       - test_rspec:
           requires: # bundle_dependenciesのあとに実行
             - bundle_dependencies
+      - deploy_ecr:
+          requires: # すべてのテストのあとに実行
+            - test_rspec
+            - test_rails_best_practices
+            - test_rubocop
