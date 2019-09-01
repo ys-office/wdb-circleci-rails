@@ -34,7 +34,7 @@ RSpec.describe 'Todos', type: :request do
 
     it 'returns 200' do
       get "/todos/#{todo.id}"
-      expect(response).to have_http_status(:ok)
+      expect(response).to have_http_status(:not_found)
     end
   end
 
