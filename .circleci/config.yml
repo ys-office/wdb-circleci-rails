@@ -8,7 +8,7 @@ executors:
           BUNDLE_PATH: vendor/bundle
           RAILS_ENV: test
     working_directory: ~/repo
-  with_db: # MySQLのDockerイメージも同時に起動する
+  with_db: # MySQLのDockerイメージも同時に起動する 
     docker:
       - image: circleci/ruby:2.5.1
         environment:
